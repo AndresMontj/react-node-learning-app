@@ -72,7 +72,7 @@ react-node-learning-app/
 
 ### Prerequisites
 
-- Node.js (v16+ recommended)
+- Node.js `^20.19.0` or `>=22.12.0` (see the `engines` field in `package.json`; required by Vite 8)
 - npm (comes with Node.js)
 - VS Code (recommended for development experience)
 
@@ -156,6 +156,12 @@ npm run install:all
 # Or separately:
 npm run install:backend
 npm run install:frontend
+
+# Run the backend test suite
+npm test
+
+# Lint both frontend and backend
+npm run lint
 ```
 
 ## Authentication
@@ -180,6 +186,9 @@ The backend has a Jest + Supertest suite covering both the auth and todo APIs:
 ```bash
 cd backend
 npm test
+
+# Lint the backend (also available for the frontend via its own npm run lint)
+npm run lint
 ```
 
 Coverage includes:
@@ -261,16 +270,25 @@ This app is set up with the following production-oriented security measures:
   business logic.
 - **Headers**: `helmet()` applies standard hardening headers and removes `X-Powered-By`.
 - **CORS**: locked to a single explicit `FRONTEND_URL` origin with `credentials: true`
-  — no wildcard origins.
+  — no wildcard origins. The server fails fast at startup if `FRONTEND_URL` is unset in
+  production instead of silently falling back to a localhost default.
 - **Rate limiting**: a generous global limit plus a stricter limiter on `/api/auth/*` to
   slow brute-force/credential-stuffing attempts (both configurable via `RATE_LIMIT_MAX`
   / `AUTH_RATE_LIMIT_MAX`).
+- **Reverse proxy awareness**: `app.set('trust proxy', 1)` ensures the app reads the real
+  client IP from `X-Forwarded-For` when deployed behind Render/Railway/Fly.io/Nginx —
+  without it, rate limiting would bucket every user behind the same proxy together.
 - **Error handling**: a centralized error handler ensures stack traces and internals
   never reach the client.
+- **Observability**: `morgan` request logging (concise in development, combined format
+  in production) and a `GET /health` endpoint for uptime monitoring / platform health
+  probes, exempted from rate limiting.
+- **Response size**: `compression` middleware reduces response payload size.
 
 ## API Endpoints
 
-All API endpoints are prefixed with `/api`.
+`GET /health` (unprefixed) returns `{ status: "ok", uptime }` for uptime monitoring and
+is exempt from rate limiting. All other endpoints are prefixed with `/api`.
 
 ### Auth (`/api/auth`)
 
@@ -301,9 +319,11 @@ MongoDB, etc.) behind the same function signatures used by the routes.
    command: `npm start`.
 2. Set environment variables on the host: `NODE_ENV=production`, a freshly generated
    `JWT_SECRET`, and `FRONTEND_URL` set to the exact deployed frontend origin (no
-   trailing slash).
+   trailing slash). The server refuses to start in production without `JWT_SECRET` or
+   `FRONTEND_URL` set, so misconfiguration fails loudly instead of silently.
 3. Ensure the platform serves over HTTPS — required for `secure` cookies to be sent.
-4. Remember: the in-memory store means data resets on every deploy/restart (see **Data
+4. If the platform asks for a health check path, use `/health`.
+5. Remember: the in-memory store means data resets on every deploy/restart (see **Data
    Persistence** above).
 
 ### Frontend (React/Vite) — e.g. Vercel or Netlify
@@ -402,8 +422,11 @@ Once you understand the basics, try extending the application:
 - [bcryptjs](https://github.com/dcodeIO/bcrypt.js) - Password hashing
 - [helmet](https://helmetjs.github.io/) - Security headers
 - [express-rate-limit](https://github.com/express-rate-limit/express-rate-limit) - Rate limiting
+- [compression](https://github.com/expressjs/compression) - Response compression
+- [morgan](https://github.com/expressjs/morgan) - HTTP request logging
 - [zod](https://zod.dev/) - Schema validation
 - [Jest](https://jestjs.io/) + [Supertest](https://github.com/ladjs/supertest) - API testing
+- [oxlint](https://oxc.rs/docs/guide/usage/linter.html) - Linting (frontend and backend)
 - [VS Code](https://code.visualstudio.com/) - Development editor
 
 ## Acknowledgements

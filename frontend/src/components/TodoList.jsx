@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import todoService from '../services/todoService';
 
 const TodoList = () => {
@@ -30,7 +30,7 @@ const TodoList = () => {
     setLoading(true);
     try {
       const newTodo = await todoService.createTodo({ text: inputValue });
-      setTodos([...todos, newTodo]);
+      setTodos((prev) => [...prev, newTodo]);
       setInputValue('');
     } catch (error) {
       console.error('Error creating todo:', error);
@@ -49,7 +49,7 @@ const TodoList = () => {
         ...todo,
         completed: !todo.completed
       });
-      setTodos(todos.map(t => t.id === id ? updatedTodo : t));
+      setTodos((prev) => prev.map((t) => (t.id === id ? updatedTodo : t)));
     } catch (error) {
       console.error('Error updating todo:', error);
     } finally {
@@ -61,7 +61,7 @@ const TodoList = () => {
     setLoading(true);
     try {
       await todoService.deleteTodo(id);
-      setTodos(todos.filter(t => t.id !== id));
+      setTodos((prev) => prev.filter((t) => t.id !== id));
     } catch (error) {
       console.error('Error deleting todo:', error);
     } finally {
