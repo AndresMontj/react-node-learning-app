@@ -374,44 +374,109 @@ learning. This means **all accounts and todos are lost whenever the backend rest
 To make data durable, swap this module for a real database (SQLite, PostgreSQL,
 MongoDB, etc.) behind the same function signatures used by the routes.
 
-## Deployment
+## Deployment Guide
 
-### Backend (Node/Express) — e.g. Render, Railway, Fly.io, or a VPS
+This app deploys as two independent services: a Node/Express API and a static
+React SPA. Deploy the backend first (the frontend needs its URL at build
+time), then the frontend, then connect the two and verify.
 
-1. Point the host at the `backend/` directory. Build command: `npm install`. Start
-   command: `npm start`.
-2. Set environment variables on the host: `NODE_ENV=production`, a freshly generated
-   `JWT_SECRET`, and `FRONTEND_URL` set to the exact deployed frontend origin (no
-   trailing slash). The server refuses to start in production without `JWT_SECRET` or
-   `FRONTEND_URL` set, so misconfiguration fails loudly instead of silently.
-3. Ensure the platform serves over HTTPS — required for `secure` cookies to be sent.
-4. If the platform asks for a health check path, use `/health`.
-5. Remember: the in-memory store means data resets on every deploy/restart (see **Data
-   Persistence** above).
+### Step 1: Deploy the backend
 
-### Frontend (React/Vite) — e.g. Vercel or Netlify
+Any Node host works (Render, Railway, Fly.io, a VPS); Render is used below as
+a concrete example.
 
-1. Set the project root/base directory to `frontend/`. Build command: `npm run build`.
-   Output/publish directory: `dist`.
-2. Set the build-time env var `VITE_API_URL` to your deployed backend's API base, e.g.
-   `https://your-backend.onrender.com/api`.
-3. Configure SPA fallback routing (rewrite unknown paths to `index.html`) so
-   `react-router-dom` routes like `/login` don't 404 on refresh — Vercel/Netlify do this
-   automatically for detected Vite apps.
+1. Push this repository to GitHub/GitLab (required by most PaaS hosts for
+   continuous deploys).
+2. Create a new **Web Service** and point it at this repo with **Root
+   Directory** set to `backend`.
+3. Configure the build/start commands:
+   - Build command: `npm install`
+   - Start command: `npm start`
+4. Add environment variables in the host's dashboard:
+   | Variable | Value |
+   |---|---|
+   | `NODE_ENV` | `production` |
+   | `JWT_SECRET` | output of `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+   | `FRONTEND_URL` | the frontend's URL from Step 2 below (no trailing slash) — set this to a placeholder like `https://placeholder.example` for now and update it once the frontend URL is known |
+   | `PORT` | usually provided automatically by the host; only set manually if required |
+
+   The server refuses to start in production without `JWT_SECRET` or
+   `FRONTEND_URL` set, so a missing value fails loudly at boot instead of
+   silently misconfiguring CORS.
+5. If the platform has a health check path field, set it to `/health`.
+6. Deploy, then note the backend's public URL (e.g.
+   `https://your-backend.onrender.com`) — the frontend needs
+   `https://your-backend.onrender.com/api` as its API base in Step 2.
+7. Confirm the platform serves over HTTPS (required for `secure` cookies) —
+   this is the default on Render/Railway/Fly.io.
+
+### Step 2: Deploy the frontend
+
+Vercel or Netlify both work well for a Vite SPA; Vercel is used below.
+
+1. Import this repository as a new project, with **Root Directory** set to
+   `frontend`.
+2. Confirm the framework preset is detected as **Vite**:
+   - Build command: `npm run build`
+   - Output directory: `dist`
+3. Add the build-time environment variable:
+   | Variable | Value |
+   |---|---|
+   | `VITE_API_URL` | `https://your-backend.onrender.com/api` (the backend URL from Step 1, with `/api` appended) |
+4. Deploy. Vite SPAs need unknown routes rewritten to `index.html` so
+   `react-router-dom` routes like `/login` don't 404 on refresh — Vercel and
+   Netlify both do this automatically once they detect a Vite project.
+5. Note the frontend's public URL (e.g. `https://your-app.vercel.app`).
+
+### Step 3: Connect the two services
+
+1. Go back to the backend host's environment variables and set `FRONTEND_URL`
+   to the real frontend URL from Step 2 (exact match, no trailing slash).
+2. Redeploy the backend so the new `FRONTEND_URL` takes effect (CORS is read
+   at server startup).
 
 ### Cross-domain cookies
 
-If the frontend and backend end up on different domains, the session cookie needs
-`sameSite: 'none'` (in `backend/src/config/authConfig.js`) instead of `'lax'` for the
-browser to send it cross-site. `sameSite: 'none'` requires `secure: true`, which is
-already tied to `NODE_ENV=production` and requires HTTPS on both ends.
+Because the frontend and backend are on different domains after this guide
+(e.g. `*.vercel.app` and `*.onrender.com`), the session cookie needs
+`sameSite: 'none'` instead of `'lax'` for the browser to send it cross-site.
+Update `backend/src/config/authConfig.js`:
 
-### Post-deploy checklist
+```js
+sameSite: isProduction ? 'none' : 'lax',
+```
 
-- Register a user on the deployed frontend and confirm the `auth_token` cookie appears
-  in DevTools with `HttpOnly`/`Secure` flags.
-- Confirm `/api/todos` returns 401 without the cookie (e.g. in an incognito tab).
-- Run `npm test` in `backend/` in CI before deploying to catch regressions.
+`sameSite: 'none'` requires `secure: true`, which is already tied to
+`NODE_ENV=production` and therefore requires HTTPS on both ends — already the
+case for the hosts above. Redeploy the backend after this change.
+
+### Step 4: Verify the deployment
+
+- Visit the deployed frontend URL and register a test account.
+- In DevTools → Application → Cookies, confirm `auth_token` is present with
+  `HttpOnly` and `Secure` checked.
+- Refresh the page — you should stay logged in (confirms `GET /api/auth/me`
+  round-trips the cookie cross-origin correctly).
+- Open an incognito window and confirm the root route redirects to `/login`
+  instead of showing stale data.
+- Hit `https://your-backend.onrender.com/health` directly and confirm it
+  returns `{ "status": "ok" }`.
+- Run `npm test` in `backend/` in CI before every deploy to catch regressions
+  before they reach production.
+
+### Keeping data in mind
+
+The in-memory store means all accounts and todos reset on every backend
+deploy or restart (see **Data Persistence** above) — expected for this
+learning app, but the first thing to change before using this pattern for
+anything real.
+
+### Redeploying after changes
+
+Both Render and Vercel redeploy automatically on every push to the connected
+branch. No manual steps are needed beyond pushing to Git, unless an
+environment variable changed (redeploy manually from the dashboard so the new
+value is picked up).
 
 ## Customization & Extension Ideas
 
