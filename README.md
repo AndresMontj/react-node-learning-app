@@ -30,6 +30,7 @@ react-node-learning-app/
 │   │   ├── main.jsx         # React entry point
 │   │   └── index.css        # Global base styles
 │   ├── .env                 # VITE_API_URL pointing at the backend
+│   ├── .env.example         # Template for .env
 │   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
@@ -63,6 +64,13 @@ cd backend && npm install
 cd frontend && npm install
 ```
 
+3. Create your local env files from the provided examples:
+
+```bash
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
 ### Environment Variables
 
 `backend/.env` (copy from `backend/.env.example`):
@@ -71,15 +79,17 @@ cd frontend && npm install
 PORT=5001
 ```
 
-`frontend/.env` tells the React app where the API lives:
+`frontend/.env` (copy from `frontend/.env.example`) tells the React app where the API lives:
 
 ```
 VITE_API_URL=http://localhost:5001/api
 ```
 
-The backend runs on port 5001 by default and the frontend on port 5173 (Vite default).
-Port 5000 is intentionally avoided because macOS reserves it for the AirPlay Receiver.
-If you change the backend port, update both files so they stay in sync.
+Both `.env` files are gitignored since they're local configuration; only the
+`.env.example` files are committed. The backend runs on port 5001 by default and the
+frontend on port 5173 (Vite default). Port 5000 is intentionally avoided because macOS
+reserves it for the AirPlay Receiver. If you change the backend port, update both files
+so they stay in sync.
 
 ## Development Scripts
 
