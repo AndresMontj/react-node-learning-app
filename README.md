@@ -420,11 +420,14 @@ Once you understand the basics, try extending the application:
 - [Axios](https://axios-http.com/) - HTTP client
 - [jsonwebtoken](https://github.com/auth0/node-jsonwebtoken) - JWT signing/verification
 - [bcryptjs](https://github.com/dcodeIO/bcrypt.js) - Password hashing
+- [cookie-parser](https://github.com/expressjs/cookie-parser) - Reads the httpOnly auth cookie
 - [helmet](https://helmetjs.github.io/) - Security headers
+- [cors](https://github.com/expressjs/cors) - Cross-origin resource sharing
 - [express-rate-limit](https://github.com/express-rate-limit/express-rate-limit) - Rate limiting
 - [compression](https://github.com/expressjs/compression) - Response compression
 - [morgan](https://github.com/expressjs/morgan) - HTTP request logging
 - [zod](https://zod.dev/) - Schema validation
+- [dotenv](https://github.com/motdotla/dotenv) - Loads environment variables from `.env`
 - [Jest](https://jestjs.io/) + [Supertest](https://github.com/ladjs/supertest) - API testing
 - [oxlint](https://oxc.rs/docs/guide/usage/linter.html) - Linting (frontend and backend)
 - [VS Code](https://code.visualstudio.com/) - Development editor
