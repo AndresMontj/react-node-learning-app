@@ -1,0 +1,79 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "npm: backend-install",
+      "type": "npm",
+      "script": "install",
+      "path": "${workspaceFolder}/backend",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: frontend-install",
+      "type": "npm",
+      "script": "install",
+      "path": "${workspaceFolder}/frontend",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "npm: backend-dev",
+      "type": "npm",
+      "script": "start",
+      "path": "${workspaceFolder}/backend",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        {
+          "owner": "typescript",
+          "fileLocation": ["relative", "${workspaceFolder}"],
+          "pattern": "$tsc",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": {
+              "regexp": "^.*Starting development server.*$"
+            },
+            "endsPattern": {
+              "regexp": "^.*Compiled successfully.*$"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "label": "npm: frontend-dev",
+      "type": "npm",
+      "script": "dev",
+      "path": "${workspaceFolder}/frontend",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        {
+          "owner": "typescript",
+          "fileLocation": ["relative", "${workspaceFolder}"],
+          "pattern": "$tsc",
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": {
+              "regexp": "^.*vite.*dev server running at:*$"
+            },
+            "endsPattern": {
+              "regexp": "^.*ready in.*ms.*$"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

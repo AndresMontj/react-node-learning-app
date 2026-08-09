@@ -1,0 +1,11 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "bradlc.vscode-tailwindcss",
+    "ms-vscode.vscode-react-refactor",
+    "dsznajder.es7-react-js-snippets",
+    "eg2.vscode-npm-script",
+    "ritwickdey.LiveServer"
+  ]
+}
