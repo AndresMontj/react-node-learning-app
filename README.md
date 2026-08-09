@@ -13,6 +13,69 @@ A full-stack learning application built with React (frontend) and Node.js/Expres
 - **Testing**: Jest + Supertest coverage for all auth and todo API endpoints
 - **VS Code Integration**: Debug configurations, recommended extensions, and tasks
 
+## Architecture
+
+### System overview
+```mermaid
+flowchart LR
+  Browser["Browser<br/>React SPA"] -- "HTTPS + httpOnly cookie" --> API["Express API<br/>(backend)"]
+  API --> Store["In-memory store<br/>users + todos"]
+  API -. "GET /health" .-> Monitor["Uptime monitor /<br/>platform health probe"]
+```
+The frontend never talks to the store directly — every read/write goes through
+the Express API, which is the sole owner of the in-memory `users`/`todos`
+data and the only place authentication/authorization decisions are made.
+
+### Backend request pipeline
+Every request passes through this middleware chain, in order
+(`backend/src/app.js`). The order is deliberate: security headers and CORS
+must be applied before anything else, and the health check is registered
+before the rate limiter so uptime probes are never throttled.
+
+1. `app.set('trust proxy', 1)` — read the real client IP from `X-Forwarded-For`
+2. `helmet()` — security headers
+3. `cors()` — enforce the single allowed `FRONTEND_URL` origin, with credentials
+4. `compression()` — gzip responses
+5. `morgan()` — request logging (skipped during tests)
+6. `express.json({ limit: '10kb' })` — parse request bodies
+7. `cookieParser()` — read the session cookie
+8. `GET /health` — exempt from rate limiting
+9. `rateLimit()` — global abuse guard (per-route auth limiter applies on top)
+10. `/api/auth/*` and `/api/todos/*` routers (todos also run `requireAuth`)
+11. `notFoundHandler` / `errorHandler` — catch-all 404 and centralized errors
+
+### Authentication lifecycle
+```mermaid
+sequenceDiagram
+  participant U as Browser
+  participant A as Express API
+  participant S as In-memory store
+
+  U->>A: POST /api/auth/register or /login
+  A->>A: Validate body (zod)
+  A->>S: Create user / verify password (bcrypt)
+  A-->>U: Set-Cookie auth_token (httpOnly JWT, 1h)
+  U->>A: Request to /api/todos (cookie sent automatically)
+  A->>A: requireAuth verifies the JWT from the cookie
+  A->>S: Read/write todos scoped to req.user.id
+  A-->>U: JSON response
+```
+See **Security Configuration** below for the full list of hardening measures
+applied at each of these steps.
+
+### Backend layering (`backend/src/`)
+- `routes/` — HTTP concerns: request validation (zod), status codes, response shape
+- `middleware/` — cross-cutting concerns: `requireAuth` (session verification), `errorHandler` (centralized error responses)
+- `data/` — persistence abstraction (`store.js`); swappable for a real database without changing routes (see **Data Persistence**)
+- `utils/` — stateless helpers (JWT sign/verify)
+- `config/` — shared constants (cookie name/options)
+
+### Frontend architecture (`frontend/src/`)
+- `context/AuthContext.jsx` is the single source of truth for auth state, restored via `GET /api/auth/me` on load
+- `components/ProtectedRoute.jsx` gates the todo view, redirecting to `/login` when there's no session
+- `services/apiClient.js` centralizes `withCredentials` and global 401 handling so individual pages don't reimplement cookie/session logic
+- `pages/` (`LoginPage`, `RegisterPage`) and `components/TodoList.jsx` are presentation components that call `services/*` for all network I/O
+
 ## Project Structure
 
 ```
